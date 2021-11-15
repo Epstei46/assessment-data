@@ -1,6 +1,50 @@
+require("dotenv").config()
+const {CONNECTION_STRING} = process.env
 
+const Sequelize = require('sequelize')
+const sequelize = new Sequelize(CONNECTION_STRING, {
+    dialect: 'postgres',
+    dialectOptions: {
+      ssl: {
+          rejectUnauthorized: false
+      }
+  }
+})
 
 module.exports = {
+    deleteCity: (req, res) => {
+        let {id} = req.params
+        console.log(id)
+        sequelize
+            .query(`DELETE FROM cities
+            WHERE city_id = ${id};`)
+            .then((dbRes) => res.status(200).send(dbRes[0]))
+            .catch(err => console.log('error seeding DB', err))
+    },
+    getCities: (req, res) => {
+        sequelize
+            .query(`SELECT cit.city_id, cit.name AS city, cit.rating,
+            cou.country_id, cou.name AS country FROM cities AS cit
+            JOIN countries AS cou
+            ON cit.country_id = cou.country_id
+            ORDER BY cit.rating DESC;`)
+            .then((dbRes) => res.status(200).send(dbRes[0]))
+            .catch(err => console.log('error seeding DB', err))
+    },
+    createCity: (req, res) => {
+        let {name, rating, countryId} = req.body
+        sequelize
+            .query(`INSERT INTO cities (name, rating, country_id)
+            VALUES('${name}', ${rating}, ${countryId});`)
+            .then((dbRes) => res.status(200).send(dbRes[0]))
+            .catch(err => console.log('error seeding DB', err))
+    },
+    getCountries: (req, res) => {
+        sequelize
+            .query(`SELECT * FROM countries;`)
+            .then((dbRes)  => res.status(200).send(dbRes[0]))
+            .catch(err => console.log('error seeding DB', err))
+    },
     seed: (req, res) => {
         sequelize.query(`
             drop table if exists cities;
@@ -11,7 +55,12 @@ module.exports = {
                 name varchar
             );
 
-            *****YOUR CODE HERE*****
+            CREATE TABLE cities (
+                city_id SERIAL PRIMARY KEY,
+                name VARCHAR,
+                rating INTEGER,
+                country_id INTEGER NOT NULL REFERENCES countries(country_id)
+            );
 
             insert into countries (name)
             values ('Afghanistan'),
@@ -209,6 +258,11 @@ module.exports = {
             ('Yemen'),
             ('Zambia'),
             ('Zimbabwe');
+
+            INSERT INTO cities (name, rating, country_id)
+            VALUES ('Kabul', 3,1),
+            ('Mendota', 1, 187),
+            ('Detroit', 4, 187);
         `).then(() => {
             console.log('DB seeded!')
             res.sendStatus(200)
